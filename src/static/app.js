@@ -101,16 +101,19 @@ document.addEventListener("DOMContentLoaded", function() {
     fetch(`/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(email)}`, {
       method: "DELETE"
     })
-      .then(response => response.json().then(data => ({ status: response.status, data })))
-      .then(({ status, data }) => {
-        console.log("Delete response:", status, data);
-        
-        if (status === 200) {
-          console.log("Successfully deleted participant");
-          fetchActivities();
+      .then(response => {
+        if (response.ok) {
+          return response.json();
         } else {
-          alert(data.detail || "Failed to remove participant");
+          return response.json().then(data => {
+            throw new Error(data.detail || "Failed to remove participant");
+          });
         }
+      })
+      .then(data => {
+        console.log("Delete successful:", data);
+        // Refresh activities immediately
+        fetchActivities();
       })
       .catch(error => {
         console.error("Delete error:", error);
@@ -137,27 +140,31 @@ document.addEventListener("DOMContentLoaded", function() {
     fetch(`/activities/${encodeURIComponent(activity)}/signup?email=${encodeURIComponent(email)}`, {
       method: "POST"
     })
-      .then(response => response.json().then(data => ({ status: response.status, data })))
-      .then(({ status, data }) => {
-        console.log("Signup response:", status, data);
-        
-        if (status === 200) {
-          messageDiv.textContent = data.message || "Successfully signed up!";
-          messageDiv.className = "success";
-          signupForm.reset();
-          // Refresh the activities list
-          setTimeout(fetchActivities, 500);
+      .then(response => {
+        if (response.ok) {
+          return response.json();
         } else {
-          messageDiv.textContent = data.detail || "Signup failed";
-          messageDiv.className = "error";
+          return response.json().then(data => {
+            throw new Error(data.detail || "Signup failed");
+          });
         }
-        
+      })
+      .then(data => {
+        console.log("Signup successful:", data);
+        messageDiv.textContent = data.message || "Successfully signed up!";
+        messageDiv.className = "success";
         messageDiv.classList.remove("hidden");
+        signupForm.reset();
+        
+        // Refresh activities immediately
+        console.log("Calling fetchActivities after signup");
+        fetchActivities();
+        
         setTimeout(() => messageDiv.classList.add("hidden"), 5000);
       })
       .catch(error => {
         console.error("Signup error:", error);
-        messageDiv.textContent = `Error: ${error.message}`;
+        messageDiv.textContent = error.message || "Error signing up";
         messageDiv.className = "error";
         messageDiv.classList.remove("hidden");
       });
